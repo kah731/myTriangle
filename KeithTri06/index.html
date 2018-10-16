@@ -1,0 +1,225 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+
+    <table>
+        <tr>
+            <td valign="top">
+                <canvas id="canvasSmall" width="64" height="64" style="border:1px solid #000000;"></canvas>
+            </td>
+            <td>
+                <canvas id="canvasLarge" width="320" height="320" style="border:1px solid #000000;"></canvas>
+            </td>
+            <td>
+                <canvas id="canvasR" width="320" height="320" style="border:1px solid #000000;"></canvas>
+            </td>
+        </tr>
+    </table>
+
+    <div>
+        <h3>Get Triangle by Row/Column</h3>
+        <input type="text" id="rowcol" size="5" />
+        <input type="button" value="Search" onclick="findrowcol();" />
+        (eg: A1)
+    </div>
+    <div>
+        <h3>Get Row/Column by Vertex</h3>
+        (<input type="text" id="v1x" size="1" />,<input type="text" id="v1y" size="1" />),
+        (<input type="text" id="v2x" size="1" />,<input type="text" id="v2y" size="1" />),
+        (<input type="text" id="v3x" size="1" />,<input type="text" id="v3y" size="1" />)
+        <input type="button" value="Search" onclick="findvertex();" />
+        (eg: (0,9),(9,0),(9,9) )
+    </div>
+    <p id="response" />
+
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+    
+    <script>
+        var uri = 'api/triangle';
+
+        $(document).ready(function () {
+            // Send an AJAX request
+            drawgrid();
+            $('#response').text('ready');
+        });
+
+        function findrowcol() {
+            var id = $('#rowcol').val();
+            // Send an AJAX request
+            $.getJSON(uri + '/' + id)
+                .done(function (data) {
+                    $('#response').text(data);
+                    drawtriangle(id, data);
+                })
+                .fail(function (jqXHR, textStatus, err) {
+                    $('#response').text('Error: ' + err);
+                });
+        }
+
+        function findvertex() {
+            var id = '(' + $('#v1x').val() + ',' + $('#v1y').val() + '),(' + $('#v2x').val() + ',' + $('#v2y').val() + '),(' + $('#v3x').val() + ',' + $('#v3y').val() + ')';
+            // Send an AJAX request
+            $.getJSON(uri + '/' + id)
+                .done(function (data) {
+                    $('#response').text(data);
+                })
+                .fail(function (jqXHR, textStatus, err) {
+                    $('#response').text('Error: ' + err);
+                });
+        }
+
+        function drawgrid() {
+            var canvS = document.getElementById("canvasSmall");
+            var ctxS = canvS.getContext("2d");
+
+            // ctxS.strokeStyle = '#b09040';  // set line color
+            ctxS.lineWidth = 1;
+            oSx = 2;
+            oSy = 2;
+
+            var canvL = document.getElementById("canvasLarge");
+            var ctxL = canvL.getContext("2d");
+
+            ctxL.strokeStyle = '#b09040';  // set line color
+            ctxL.lineWidth = 1;
+        
+            lenx = 10;  // length of each line
+            leny = 10;
+            mx = 5;  // multiplier for size (len=10 x mult=5 : pixels=50)
+            ox = 10; // offset (from left)
+            my = 5;  // multiplier
+            oy = 10; // offset (from top)
+            dy = lenx * mx - 1; // delta lenth of segment in pixels
+            dx = leny * my - 1;
+        
+            // draw bottom triangles & both labels (top triangle formed by ajacent triangles, except top and right side ... below)
+            var ctxText = canvL.getContext("2d");
+            cols = "ABCDEF"
+            ctxText.font = "11px Arial";
+            for (iy = 0; iy < 6; iy += 1) {
+                yl = iy * leny * my + oy;
+                fontx = 5;
+                ys = iy * leny + oSy;
+                for (ix = 0; ix < 6; ix += 1) {
+                    xl = ix * lenx * mx + ox;
+                    ctxL.moveTo(xl, yl + dy);
+                    ctxL.lineTo(xl, yl);
+                    ctxL.lineTo(xl + dx, yl + dy);
+                    ctxL.lineTo(xl, yl + dy);
+                    rowColLabel = cols.substr(iy, 1) + (ix * 2 + 1)
+                    ctxText.fillText(rowColLabel, xl + 5, yl + 40);
+                    if (ix > 3) { fontx = 0; }
+                    rowColLabel = cols.substr(iy, 1) + (ix * 2 + 2)
+                    xs = ix * lenx + oSx;
+                    ctxText.fillText(rowColLabel, xl + 25 + fontx, yl + 15);
+                    ctxS.moveTo(xs, ys + leny);
+                    ctxS.lineTo(xs, ys);
+                    ctxS.lineTo(xs + lenx, ys + leny);
+                    ctxS.lineTo(xs, ys + leny);
+                }
+            }
+
+            // fill top of triangles
+            yl = oy;
+            ys = oSy;
+            for (ix = 0; ix < 6; ix += 1) {
+                xl = ix * lenx * mx + ox;
+                ctxL.moveTo(xl, yl);
+                ctxL.lineTo(xl + dx, yl);
+                xs = ix * lenx + oSx;
+                ctxS.moveTo(xs, ys);
+                ctxS.lineTo(xs + 9, ys);
+            }
+
+            // fill left side of triangles
+            ix = 0;
+            xl = 6 * lenx * mx + ox;
+            xs = 6 * lenx + oSx;
+            for (iy = 0; iy < 6; iy += 1) {
+                yl = iy * leny * my + oy;
+                ctxL.moveTo(xl, yl);
+                ctxL.lineTo(xl, yl + dy);
+                ys = iy * leny + oSy;
+                ctxS.moveTo(xs, ys);
+                ctxS.lineTo(xs, ys + 9);
+            }
+
+            ctxS.stroke();
+            ctxL.stroke();
+        }
+
+        function drawtriangle(rowcol, vx) {
+            vx = vx + ""; // force it to be a string
+            rowcol = rowcol + "";
+            verts = vx.split(",");
+            
+            v1x = verts[0];
+            v1y = verts[1];
+            v2x = verts[2];
+            v2y = verts[3];
+            v3x = verts[4];
+            v3y = verts[5];
+
+            mult = 5;
+            offset = 11;
+
+            rv1x = v1x * mult + offset;
+            rv1y = v1y * mult + offset;
+            rv2x = v2x * mult + offset;
+            rv2y = v2y * mult + offset;
+            rv3x = v3x * mult + offset;
+            rv3y = v3y * mult + offset;
+            var canvR = document.getElementById("canvasR");
+            var ctxR = canvR.getContext("2d");
+            ctxR.beginPath();
+            ctxR.moveTo(rv1x, rv1y);
+            ctxR.lineTo(rv2x, rv2y);
+            ctxR.lineTo(rv3x, rv3y);
+            ctxR.lineTo(rv1x, rv1y);
+            ctxR.closePath();
+            ctxR.stroke();
+            ctxR.fillStyle = "#FFCC00";
+            ctxR.fill();
+
+            yTextOffset = -5;
+            xTextOffset = 5;
+            if (v1x > v2x) {
+                yTextOffset = 15;
+                xTextOffset = -20;
+            }
+            var ctxText = canvR.getContext("2d");
+            ctxText.font = "11px Arial";
+            ctxText.fillStyle = "#002000";
+            ctxText.fillText(rowcol.toUpperCase(), rv1x + xTextOffset, rv1y + yTextOffset);
+
+            mult = 1;
+            offset = 2;
+
+            sv1x = v1x * mult + offset;
+            sv1y = v1y * mult + offset;
+            sv2x = v2x * mult + offset;
+            sv2y = v2y * mult + offset;
+            sv3x = v3x * mult + offset;
+            sv3y = v3y * mult + offset;
+            var canvS = document.getElementById("canvasSmall");
+            var ctxS = canvS.getContext("2d");
+            ctxS.beginPath();
+            ctxS.moveTo(sv1x, sv1y);
+            ctxS.lineTo(sv2x, sv2y);
+            ctxS.lineTo(sv3x, sv3y);
+            ctxS.lineTo(sv1x, sv1y);
+            ctxS.closePath();
+            ctxS.stroke();
+            ctxS.fillStyle = "#FFCC00";
+            ctxS.fill();
+        }
+
+    </script>
+
+
+</body>
+</html>
